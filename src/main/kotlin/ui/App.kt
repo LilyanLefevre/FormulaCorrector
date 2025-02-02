@@ -119,21 +119,27 @@ fun App() {
                                 )
                                 outputFile.bufferedWriter().use { writer ->
                                     // En-tête
-                                    writer.write("ID;m/z;Formule Originale;ID correspondant;Formule correspondante;Correction appliquée\n")
+                                    writer.write("ID;m/z;Formule Originale;Correspondances trouvees\n")
 
                                     // Données
                                     compounds.forEach { compound ->
-                                        val match = matchResults.find { it.originalEntry.id == compound.id }
-                                        val line = buildString {
+                                        var line = buildString {
                                             append(compound.id).append(";")
                                             append(compound.mz).append(";")
                                             append(compound.originalFormula.toFormulaString()).append(";")
-                                            append(match?.matchedEntry?.id ?: "-").append(";")
-                                            append(
-                                                match?.matchedEntry?.originalFormula?.toFormulaString() ?: "-"
-                                            ).append(";")
-                                            append(match?.appliedCorrection?.toFormulaString() ?: "-")
                                         }
+
+                                        val matchesForCompound = matchResults.filter { it.originalEntry.id == compound.id }
+                                        if (matchesForCompound.isNotEmpty()) {
+                                            line += "["
+                                            matchesForCompound.forEach { match ->
+                                                line += "correction = " + match.appliedCorrection.toFormulaString() + " result = (ID " + match.matchedEntry.id + ") " + match.originalEntry.originalFormula.add(match.appliedCorrection).toFormulaString() + ", "
+                                            }
+                                            line += "]"
+                                        } else {
+                                            line += "-"
+                                        }
+
                                         writer.write(line)
                                         writer.newLine()
                                     }
