@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
@@ -23,11 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
-import model.AtomicFormula
 import model.CompoundEntry
 import model.Correction
+import model.Correction.Companion.loadCorrections
 import model.CorrectionStats
-import repository.CorrectionsRepository
 import service.CsvAnalyzer
 import service.MatchResult
 import java.io.File
@@ -46,20 +44,13 @@ data class SortState(
 fun App() {
     var compounds by remember { mutableStateOf<List<CompoundEntry>>(emptyList()) }
     var corrections by remember { mutableStateOf(listOf<Correction>()) }
-    var showCorrectionsDialog by remember { mutableStateOf(false) }
     var csvFile by remember { mutableStateOf<File?>(null) }
 
-    val repository = remember { CorrectionsRepository() }
     val analyzer = remember { CsvAnalyzer() }
     var matchResults by remember { mutableStateOf<List<MatchResult>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var showStatsDialog by remember { mutableStateOf(false) }
     var sortState by remember { mutableStateOf(SortState(SortColumn.ID, true)) }
-
-    // Chargement initial des corrections
-    LaunchedEffect(Unit) {
-        corrections = repository.getCorrections()
-    }
 
     MaterialTheme {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -87,6 +78,15 @@ fun App() {
                         }
                     }) {
                         Text("Charger CSV")
+                    }
+
+                    Button(onClick = {
+                        val file = FileDialog.openFile(title = "Sélectionner les corrections", extension = "txt")
+                        if (file != null) {
+                            corrections = loadCorrections(file)
+                        }
+                    }) {
+                        Text("Charger corrections")
                     }
 
                     Button(
@@ -156,11 +156,6 @@ fun App() {
                         enabled = matchResults.isNotEmpty()
                     ) {
                         Text("Statistiques")
-                    }
-
-                    // Bouton de gestion des corrections à droite
-                    Button(onClick = { showCorrectionsDialog = true }) {
-                        Text("Gérer corrections")
                     }
                 }
             }
@@ -303,22 +298,6 @@ fun App() {
             }
         }
 
-        // Dialog de gestion des corrections
-        if (showCorrectionsDialog) {
-            CorrectionsDialog(
-                corrections = corrections,
-                onDismiss = { showCorrectionsDialog = false },
-                onDeleteCorrection = { correction ->
-                    corrections = corrections - correction
-                    repository.saveCorrections(corrections)
-                },
-                onAddCorrection = { formula ->
-                    corrections = corrections + Correction(formula)
-                    repository.saveCorrections(corrections)
-                }
-            )
-        }
-
         if (showStatsDialog) {
             StatsDialog(
                 matchResults = matchResults,
@@ -372,68 +351,6 @@ private fun TableCell(text: String, widthFraction: Float) {
             .padding(8.dp),
         style = MaterialTheme.typography.body2
     )
-}
-
-@Composable
-private fun CorrectionsDialog(
-    corrections: List<Correction>,
-    onDismiss: () -> Unit,
-    onDeleteCorrection: (Correction) -> Unit,
-    onAddCorrection: (AtomicFormula) -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.8f).fillMaxHeight(0.8f),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Gestion des corrections", style = MaterialTheme.typography.h6)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Liste des corrections
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(corrections) { correction ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(correction.formula.toFormulaString())
-                            IconButton(onClick = { onDeleteCorrection(correction) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Supprimer")
-                            }
-                        }
-                    }
-                }
-
-                // Formulaire d'ajout
-                var newFormula by remember { mutableStateOf("") }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = newFormula,
-                        onValueChange = { newFormula = it },
-                        placeholder = { Text("Ex: C-1H2O3N-1S0P0Cl0") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    Button(
-                        onClick = {
-                            // TODO: Parser la formule et appeler onAddCorrection
-                            newFormula = ""
-                        }
-                    ) {
-                        Text("Ajouter")
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable

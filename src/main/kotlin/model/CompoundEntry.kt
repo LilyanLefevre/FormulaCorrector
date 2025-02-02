@@ -6,6 +6,5 @@ import kotlinx.serialization.Serializable
 data class CompoundEntry(
     val id: String,
     val mz: Double,
-    val originalFormula: AtomicFormula,
-    val correctedFormula: AtomicFormula? = null
+    val originalFormula: AtomicFormula
 )

@@ -1,11 +1,18 @@
 package model
 
 import kotlinx.serialization.Serializable
+import java.io.File
 
 @Serializable
 data class Correction(
     val formula: AtomicFormula
 ) {
-    // La formule sert de nom/identifiant
-    val name: String get() = formula.toFormulaString()
+    companion object {
+        fun loadCorrections(file: File): List<Correction> {
+            return file.bufferedReader().lines().map { line ->
+                Correction(AtomicFormula.parseFormulaString(line))
+            }
+                .toList()
+        }
+    }
 }
