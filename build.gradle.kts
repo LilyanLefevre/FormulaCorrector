@@ -31,6 +31,11 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Exe)
             packageName = "FormulaCorrector"
             packageVersion = "1.0.0"
+
+            windows {
+                perUserInstall = true
+                dirChooser = true
+            }
         }
     }
 }
